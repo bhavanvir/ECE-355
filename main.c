@@ -33,7 +33,7 @@
 
 #include "diag/trace.h"
 #include "cmsis/cmsis_device.h"
-#include "stm32f0xx_hal_spi.h"
+//#include "stm32f0-hal/stm32f0xx_hal_spi.h"
 
 
 // ----------------------------------------------------------------------------
@@ -56,11 +56,21 @@
 #pragma GCC diagnostic ignored "-Wmissing-declarations"
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
+/* Clock prescaler for TIM2 timer: no prescaling */
+#define myTIM2_PRESCALER ((uint16_t)0x0000)
+/* Maximum possible setting for overflow */
+#define myTIM2_PERIOD ((uint32_t)0xFFFFFFFF)
+
+/* Clock prescaler for TIM3 timer: no prescaling */
+#define myTIM3_PRESCALER ((uint16_t)0x0000)
+/* Maximum possible setting for overflow */
+#define myTIM3_PERIOD ((uint32_t)0xFFFFFFFF)
+
 SPI_HandleTypeDef SPI_Handle;
 
-int edge_flag = 0;
-int resistance = 0;
-int frequency = 0;
+int check_first_edge = 0;
+int r = 0;
+int f = 0;
 
 static void ADC_Config(void);
 static void DAC_Config(void);
@@ -70,6 +80,8 @@ static void display_text(char s[]);
 static void display_number(uint16_t num);
 static void position_lcd(unsigned short x, unsigned short y);
 
+
+//static void IRQ_Config();
 void refresh_LCD();
 void SystemClock48MHz(void);
 void HC595_Config();
@@ -78,9 +90,15 @@ void write_cmd(char cmd);
 void write_data(char data);
 void LCD_init();
 
+
+//static void LCD_Config();
+//static void Delay();
+
+
 int
 main(int argc, char* argv[])
 {
+
 	SystemClock48MHz();
 	trace_printf("System clock: %u Hz\n", SystemCoreClock);
 
@@ -89,9 +107,11 @@ main(int argc, char* argv[])
 	myTIM2_Init();
 	myEXTI_Init();
 
-	// Configure LCD
+	//myTIM3_Init();
+	/* config LCD */
 	HC595_Config();
 	LCD_init();
+
 
 	while (1)
 	{
@@ -101,22 +121,38 @@ main(int argc, char* argv[])
 
 	  int ADC1ConvertedVal = (uint16_t) ADC1->DR;
 
-	  resistance = (ADC1ConvertedVal * 5000)/0xFFF;
+	  r = (ADC1ConvertedVal * 5000)/0xFFF;
 
 	  DAC-> DHR12R1 = ADC1ConvertedVal;
+
+//	  trace_printf("Resistance: %d\n", r);
+//	  trace_printf("Voltage: %d\n", ADC1ConvertedVal);
 
 	  refresh_LCD();
 	}
 }
 
 void HC595_Config() {
+
+//	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+//	RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+//
+//	GPIOB->MODER &= 0xFFFFFBBF;
+//	GPIOB->AFR[2] &= 0xFF0F0FFF;
+//
+//	GPIOB->MODER &= 0xFFFFFDFF;
+
     GPIO_InitTypeDef GPIO_InitStruct;
 
-    // Enable clock for GPIOB and SPI1
+//
+// Enable clock for GPIOB and SPI1
+//
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
-    // Configure PB3 and PB5 alternate function for SPI
+//
+// Configure PB3 and PB5 alternate function for SPI
+//
     GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
@@ -124,7 +160,9 @@ void HC595_Config() {
     GPIO_InitStruct.Alternate = GPIO_AF0_SPI1;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    // Configure PB4 in output mode to be used as storage clock input in 74HC595
+//
+// Configure PB4 in output mode to be used as storage clock input in 74HC595
+//
     GPIO_InitStruct.Pin = GPIO_PIN_4;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
@@ -150,48 +188,54 @@ void HC595_Config() {
 
     // Enable the SPI
     __HAL_SPI_ENABLE( &SPI_Handle );
+
 }
 
 void refresh_LCD() {
-	//trace_printf("Resistance: %d\n", r);
+	trace_printf("Resistance: %d\n", r);
 
 	position_lcd(1, 1);
 	display_text("R:");
-	display_number(resistance);
+	display_number(r);
 	position_lcd(7, 1);
 	display_text("Oh");
 
 	position_lcd(1, 2);
 	display_text("F:");
-	display_number(frequency);
+	display_number(f);
 	position_lcd(7, 2);
 	display_text("Hz");
+
 }
 
 static void display_text(char s[]) {
+
 	for (unsigned short i = 0; i < strlen(s); i++)
 		write_data(s[i]);
+
 }
 
 static void display_number(uint16_t num) {
+
 	char n[4] = {'0', '0', '0', '0'};
 	itoa(num, n, 10);
 	display_text(n);
+
 }
 
 static void position_lcd(unsigned short x, unsigned short y) {
+
 	unsigned short val = 127 + x;
 
-	// If we want to write to the second row
 	if (y == 2) {
-		// Shift the current value by 64 bits or 4 bytes
 		val += 64;
-		// Output to the LCD
 		write_cmd(val);
 	}
+
 }
 
 void LCD_init(void) {
+
 	H595_Write(0x02);
 	H595_Write(0x82);
 	H595_Write(0x02);
@@ -200,9 +244,11 @@ void LCD_init(void) {
 	write_cmd(0x0C);
 	write_cmd(0x06);
 	write_cmd(0x01);
+
 }
 
 void write_cmd(char cmd) {
+
 	char low = cmd & 0x0F;
 	char high = (cmd >> 4) & 0x0F;
 
@@ -212,9 +258,11 @@ void write_cmd(char cmd) {
 	H595_Write(low);
 	H595_Write(low | 0x80);
 	H595_Write(low);
+
 }
 
 void write_data(char data) {
+
 	char low = data & 0x0F;
 	char high = (data >> 4) & 0x0F;
 
@@ -224,9 +272,11 @@ void write_data(char data) {
 	H595_Write(low | 0x40);
 	H595_Write(low | 0xC0);
 	H595_Write(low | 0x40);
+
 }
 
 void H595_Write(uint8_t data) {
+
 	GPIOB->BRR = GPIO_PIN_4;
 
 	while(! __HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
@@ -236,13 +286,15 @@ void H595_Write(uint8_t data) {
 	while(! __HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
 
 	GPIOB->BSRR = GPIO_PIN_4;
+
 }
 
 static void ADC_Config() {
+
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+
 	RCC->APB2ENR |= RCC_APB2ENR_ADCEN;
-`
-	// Set MODER0 as analog and MODER1 as input for the ADC
+
 	GPIOC->MODER &= 0xFFFFFFF3;
 	GPIOC->MODER |= 0x0000000C;
 
@@ -280,6 +332,7 @@ static void DAC_Config() {
 
 void myTIM2_Init()
 {
+
 	/* Enable clock for TIM2 peripheral */
 	// Relevant register: RCC->APB1ENR
 	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
@@ -290,9 +343,9 @@ void myTIM2_Init()
 	TIM2->CR1 = ((uint16_t)0x008C);
 
 	/* Set clock prescaler value */
-	TIM2->PSC = ((uint16_t)0x0000);
+	TIM2->PSC = myTIM2_PRESCALER;
 	/* Set auto-reloaded delay */
-	TIM2->ARR = ((uint32_t)12000000);
+	TIM2->ARR = myTIM2_PERIOD;
 
 	/* Update timer registers */
 	// Relevant register: TIM2->EGR
@@ -310,8 +363,8 @@ void myTIM2_Init()
 	// Relevant register: TIM2->DIER
 	TIM2->DIER |= TIM_DIER_UIE;
 
-	/* Start counting timer pulses*/
-	TIM2->CR1 |= TIM_CR1_CEN;
+	/* start counting timer pulses TIM2->CR1 |= TIM_CR1_CEN; */
+	//TIM2->CR1 |= TIM_CR1_CEN;
 }
 
 void myEXTI_Init()
@@ -337,11 +390,16 @@ void myEXTI_Init()
 	NVIC_EnableIRQ(EXTI0_1_IRQn);
 }
 
+
 /* This handler is declared in system/src/cmsis/vectors_stm32f0xx.c */
 void TIM2_IRQHandler()
 {
+	trace_printf("\nHello Sir Good Afternoon sir\n");
 	/* Check if update interrupt flag is indeed set */
 	if ((TIM2->SR & TIM_SR_UIF) != 0){
+
+		trace_printf("\n*** Overflow! ***\n");
+
 		/* Clear update interrupt flag */
 		// Relevant register: TIM2->SR
 		TIM2->SR &= ~(TIM_SR_UIF);
@@ -349,6 +407,51 @@ void TIM2_IRQHandler()
 		/* Restart stopped timer */
 		// Relevant register: TIM2->CR1
 		TIM2->CR1 |= TIM_CR1_CEN;
+
+	}
+}
+
+
+void EXTI0_1_IRQHandler() {
+	// Declare/initialize your local variables here...
+
+	double period = 0;
+	double frequency = 0;
+
+	/* Check if EXTI1 interrupt pending flag is indeed set */
+	if ((EXTI->PR & EXTI_PR_PR1) != 0){
+
+		if (check_first_edge == 0){ /* first edge */
+
+			check_first_edge = 1;
+
+			TIM2->CNT = 0x00000000; // Clear count register
+			TIM2->CR1 |= TIM_CR1_CEN; // Start timer
+
+		} else { /* Second edge */
+
+			EXTI->IMR &= ~(EXTI_IMR_MR1);
+
+			check_first_edge = 0;
+
+			TIM2->CR1 &= ~(TIM_CR1_CEN); // Stop timer
+
+			/* Save clock cycle count into variable "count" */
+			uint32_t count = TIM2->CNT;
+
+			//trace_printf("count: %d\n", count);
+
+			period = (double)count/(double)SystemCoreClock;
+			frequency = 1.0 / period;
+
+			f = frequency;
+			//trace_printf("Frequency: %lf\n", frequency);
+			/* calculate period and frequency and print */
+
+			EXTI->IMR |= EXTI_IMR_MR1;
+		}
+
+		EXTI->PR |= EXTI_PR_PR1; // Clear EXTI1 interrupt pending flag
 	}
 }
 
@@ -388,6 +491,8 @@ void SystemClock48MHz( void )
     SystemCoreClockUpdate();
 
 }
+
+
 
 #pragma GCC diagnostic pop
 
