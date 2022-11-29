@@ -232,7 +232,6 @@ void write_cmd(char cmd)
 	// Bit shift the input 4 bits to the right, then mask the lower 4 bits
 	char high = (cmd >> 4) & 0x0F;
 
-	// We don't need to set the RS or R/W pins, since we are not reading from the LCD
 	H595_Write(high);
 	H595_Write(high | 0x80);
 	H595_Write(high);
