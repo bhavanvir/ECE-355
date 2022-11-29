@@ -106,8 +106,7 @@ int main(int argc, char *argv[])
 	{
 		ADC1->CR |= ((uint32_t)0x00000004);
 
-		while (!(ADC1->ISR & ((uint32_t)0x00000004)))
-			;
+		while (!(ADC1->ISR & ((uint32_t)0x00000004)));
 
 		int ADC1ConvertedVal = (uint16_t)ADC1->DR;
 
@@ -255,13 +254,11 @@ void H595_Write(uint8_t data)
 {
 	GPIOB->BRR = GPIO_PIN_4;
 
-	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE))
-		;
+	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
 
 	HAL_SPI_Transmit(&SPI_Handle, &data, 1, HAL_MAX_DELAY);
 
-	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE))
-		;
+	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
 
 	GPIOB->BSRR = GPIO_PIN_4;
 }
@@ -287,8 +284,7 @@ static void ADC_Config()
 
 	ADC1->CR |= (uint32_t)ADC_CR_ADEN;
 
-	while (!(ADC1->ISR & ADC_CR_ADEN))
-		;
+	while (!(ADC1->ISR & ADC_CR_ADEN));
 }
 
 static void DAC_Config()
@@ -432,8 +428,7 @@ void SystemClock48MHz(void)
 	// Disable the PLL
 	RCC->CR &= ~(RCC_CR_PLLON);
 	// Wait for the PLL to unlock
-	while ((RCC->CR & RCC_CR_PLLRDY) != 0)
-		;
+	while ((RCC->CR & RCC_CR_PLLRDY) != 0);
 	// Configure the PLL for a 48MHz system clock
 	RCC->CFGR = 0x00280000;
 
@@ -441,8 +436,7 @@ void SystemClock48MHz(void)
 	RCC->CR |= RCC_CR_PLLON;
 
 	// Wait for the PLL to lock
-	while ((RCC->CR & RCC_CR_PLLRDY) != RCC_CR_PLLRDY)
-		;
+	while ((RCC->CR & RCC_CR_PLLRDY) != RCC_CR_PLLRDY);
 
 	// Switch the processor to the PLL clock source
 	RCC->CFGR = (RCC->CFGR & (~RCC_CFGR_SW_Msk)) | RCC_CFGR_SW_PLL;
