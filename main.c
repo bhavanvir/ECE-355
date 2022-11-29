@@ -90,7 +90,7 @@ void LCD_init();
 
 int main(int argc, char *argv[])
 {
-
+	// Configure the system clock to 48 MHz
 	SystemClock48MHz();
 	trace_printf("System clock: %u Hz\n", SystemCoreClock);
 
@@ -166,21 +166,26 @@ void refresh_LCD()
 {
 	trace_printf("Resistance: %d\n", r);
 
+	// Set the position of the LCD to the 2nd line and 1st column to display the resistance
 	position_lcd(1, 1);
 	display_text("R:");
 	display_number(r);
+	// Set the position of the LCD to the 7th column to display the units
 	position_lcd(7, 1);
 	display_text("Oh");
 
+	// Set the position of the LCD to the 2nd line and 1st column to display the frequency
 	position_lcd(1, 2);
 	display_text("F:");
 	display_number(f);
+	// Set the position of the LCD to the 7th column to display the units
 	position_lcd(7, 2);
 	display_text("Hz");
 }
 
 static void display_text(char s[])
 {
+	// Loop through the string and display each character
 	for (unsigned short i = 0; i < strlen(s); i++)
 		write_data(s[i]);
 }
@@ -196,11 +201,13 @@ static void display_number(uint16_t num)
 
 static void position_lcd(unsigned short x, unsigned short y)
 {
+	// 8 possible bits to set, with a maximum value of 2^8 - 1 = 255, with 127 as the base value
 	unsigned short val = 127 + x;
 
-	// y corresponds to the row, where 2 is the second row
+	// If y corresponds to the second row, add 64 to the value to shift it to the next line
 	if (y == 2)
 	{
+		// 64 = 0x40 in hexadecimal, which corresponds to the 1st column of the 2nd line, adding 64 each time will shift the spot down
 		val += 64;
 		write_cmd(val);
 	}
@@ -222,11 +229,10 @@ void write_cmd(char cmd)
 {
 	// Mask the lower 4 bits
 	char low = cmd & 0x0F;
-	// But shift the input 4 bits to the right, then mask the lower 4 bits
+	// Bit shift the input 4 bits to the right, then mask the lower 4 bits
 	char high = (cmd >> 4) & 0x0F;
 
-	// 0x40 = 0100 0000
-	// 0xC0 = 1100 0000
+	// We don't need to set the RS or R/W pins, since we are not reading from the LCD
 	H595_Write(high);
 	H595_Write(high | 0x80);
 	H595_Write(high);
@@ -252,14 +258,19 @@ void write_data(char data)
 
 void H595_Write(uint8_t data)
 {
+	// Reset bits in Port B Pin_4 to low
 	GPIOB->BRR = GPIO_PIN_4;
 
+	// Wait until the transmit buffer empty flag is false (not empty), meaning the SPI is ready to transmit
 	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
 
+	// Transmit the data, in this case, the data is 8 bits of the LCD corresponding to a character
 	HAL_SPI_Transmit(&SPI_Handle, &data, 1, HAL_MAX_DELAY);
 
+	// Wait until the transmit buffer empty flag is false (not empty), meaning the SPI is ready to transmit
 	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
 
+	// Set bits in Port B Pin_4 to high
 	GPIOB->BSRR = GPIO_PIN_4;
 }
 
@@ -411,9 +422,11 @@ void EXTI0_1_IRQHandler()
 			// Save the current clock cycle
 			uint32_t count = TIM2->CNT;
 
+			// Calculate period and frequency
 			period = (double)count / (double)SystemCoreClock;
 			frequency = 1.0 / period;
 
+			// Set the global variable f to the calculated frequency
 			f = frequency;
 
 			EXTI->IMR |= EXTI_IMR_MR1;
