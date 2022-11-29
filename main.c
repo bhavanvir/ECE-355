@@ -75,8 +75,8 @@ static void ADC_Config(void);
 static void DAC_Config(void);
 static void myTIM2_Init();
 static void myEXTI_Init();
-static void display_text(char s[]);
-static void display_number(uint16_t num);
+static void display_text(char display_string[]);
+static void display_number(uint16_t number);
 static void position_lcd(unsigned short x, unsigned short y);
 
 // static void IRQ_Config();
@@ -84,7 +84,7 @@ void refresh_LCD();
 void SystemClock48MHz(void);
 void HC595_Config();
 void H595_Write(uint8_t data);
-void write_cmd(char cmd);
+void write_cmd(char command);
 void write_data(char data);
 void LCD_init();
 
@@ -183,19 +183,19 @@ void refresh_LCD()
 	display_text("Hz");
 }
 
-static void display_text(char s[])
+static void display_text(char display_string[])
 {
 	// Loop through the string and display each character
 	for (unsigned short i = 0; i < strlen(s); i++)
-		write_data(s[i]);
+		write_data(display_string[i]);
 }
 
-static void display_number(uint16_t num)
+static void display_number(uint16_t number)
 {
 	// Allocate 4 bytes for the number
 	char allocated_digits[4] = {'0', '0', '0', '0'};
 	// Convert the integer to a null terminiated string, with a radix of 10 (decimal number ranging from 0-9)
-	itoa(num, allocated_digits, 10);
+	itoa(number, allocated_digits, 10);
 	display_text(allocated_digits);
 }
 
@@ -225,12 +225,12 @@ void LCD_init(void)
 	write_cmd(0x01);
 }
 
-void write_cmd(char cmd)
+void write_cmd(char command)
 {
 	// Mask the lower 4 bits
-	char low = cmd & 0x0F;
+	char low = command & 0x0F;
 	// Bit shift the input 4 bits to the right, then mask the lower 4 bits
-	char high = (cmd >> 4) & 0x0F;
+	char high = (command >> 4) & 0x0F;
 
 	H595_Write(high);
 	H595_Write(high | 0x80);
