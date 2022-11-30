@@ -102,16 +102,23 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
+		// Start the ADC
 		ADC1->CR |= ((uint32_t)0x00000004);
 
-		while (!(ADC1->ISR & ((uint32_t)0x00000004)));
+		// Wait for the ADC to finish initializing
+		while (!(ADC1->ISR & ((uint32_t)0x00000004))){
+			// Do nothing until the ADC is ready
+		}
 
+		// Get our ADC value
 		int ADC1ConvertedVal = (uint16_t)ADC1->DR;
-
+		// Convert our ADC value to achieve a resistance value
 		r = (ADC1ConvertedVal * 5000) / 0xFFF;
 
+		// Normalize our value through our DAC
 		DAC->DHR12R1 = ADC1ConvertedVal;
 
+		// Display our value on the LCD
 		LCD_Reset_Display();
 	}
 }
@@ -303,43 +310,62 @@ void HC595_Transfer(uint8_t data)
 
 static void ADC_Config()
 {
+	// Enabled GPIO Clock
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
 
+	// Enable clock for ADC
 	RCC->APB2ENR |= RCC_APB2ENR_ADCEN;
 
+	// Configure GPIO as output
 	GPIOC->MODER &= 0xFFFFFFF3;
 	GPIOC->MODER |= 0x0000000C;
 
+	// Configure GPIO for input
 	GPIOC->PUPDR &= 0xFFFFFFF3;
 	GPIOC->PUPDR |= 0x00000000;
 
+	// Configure continuous read
 	ADC1->CFGR1 = ADC_CFGR1_CONT | ADC_CFGR1_OVRMOD;
 
+	// Set ADC to select chanel 11
 	ADC1->CHSELR |= ADC_CHSELR_CHSEL11;
-
+	
+	// Set sampling input to 239.5 ADC clock cycles
 	ADC1->SMPR &= ~((uint32_t)0x00000007);
 	ADC1->SMPR |= (uint32_t)0x00000007;
 
+	// Start the ADC
 	ADC1->CR |= (uint32_t)ADC_CR_ADEN;
 
-	while (!(ADC1->ISR & ADC_CR_ADEN));
+	// Wait for initialization of the ADC to complete
+	while (!(ADC1->ISR & ADC_CR_ADEN))
+	{
+		// Do nothing as long as the initialization is not complete
+	}
 }
 
 static void DAC_Config()
 {
+	// Enable TSCEN clock
 	RCC->AHBENR |= ((uint32_t)0x00020000);
 
+	// Enable Timer 14 for the DAC
 	RCC->APB1ENR |= ((uint32_t)0x20000000);
 
+	// Configure all GPIO pins as Input (Analog)
 	GPIOA->MODER &= 0xFFFFFCFF;
+	// Configure GPIO pin 5 as input
 	GPIOA->MODER |= 0x00000300;
 
+	// Configure all GPIO pins as reserved
 	GPIOA->PUPDR &= 0xFFFFFCFF;
+	// Set all GPIO pins to pull/push
 	GPIOA->PUPDR |= 0x00000000;
 
+	// Set DAC channel 1 to enabled and use all 12 channel 1 bits
 	DAC->CR &= 0xFFFFFFFF9;
+	//Restart channel 1
 	DAC->CR |= 0x00000000;
-
 	DAC->CR |= 0x00000001;
 }
 
