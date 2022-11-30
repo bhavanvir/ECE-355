@@ -33,7 +33,6 @@
 
 #include "diag/trace.h"
 #include "cmsis/cmsis_device.h"
-//#include "stm32f0-hal/stm32f0xx_hal_spi.h"
 
 // ----------------------------------------------------------------------------
 //
@@ -75,18 +74,17 @@ static void ADC_Config(void);
 static void DAC_Config(void);
 static void myTIM2_Init();
 static void myEXTI_Init();
-static void display_text(char display_string[]);
-static void display_number(uint16_t number);
-static void position_lcd(unsigned short x, unsigned short y);
+static void LCD_Display_Text(char display_string[]);
+static void LCD_Display_Number(uint16_t number);
+static void LCD_Set_Position(unsigned short x, unsigned short y);
 
-// static void IRQ_Config();
-void refresh_LCD();
+void LCD_Reset_Display();
 void SystemClock48MHz(void);
 void HC595_Config();
 void H595_Write(uint8_t data);
-void write_cmd(char command);
-void write_data(char data);
-void LCD_init();
+void LCD_Write_Command(char command);
+void LCD_Write_Data(char data);
+void LCD_Init();
 
 int main(int argc, char *argv[])
 {
@@ -100,7 +98,7 @@ int main(int argc, char *argv[])
 	myEXTI_Init();
 
 	HC595_Config();
-	LCD_init();
+	LCD_Init();
 
 	while (1)
 	{
@@ -114,7 +112,7 @@ int main(int argc, char *argv[])
 
 		DAC->DHR12R1 = ADC1ConvertedVal;
 
-		refresh_LCD();
+		LCD_Reset_Display();
 	}
 }
 
@@ -162,44 +160,44 @@ void HC595_Config()
 	__HAL_SPI_ENABLE(&SPI_Handle);
 }
 
-void refresh_LCD()
+void LCD_Reset_Display()
 {
-	trace_printf("Resistance: %d\n", r);
-
 	// Set the position of the LCD to the 2nd line and 1st column to display the resistance
-	position_lcd(1, 1);
-	display_text("R:");
-	display_number(r);
+	LCD_Set_Position(1, 1);
+	LCD_Display_Text("R:");
+	LCD_Display_Number(r);
 	// Set the position of the LCD to the 7th column to display the units
-	position_lcd(7, 1);
-	display_text("Oh");
+	LCD_Set_Position(7, 1);
+	LCD_Display_Text("Oh");
 
 	// Set the position of the LCD to the 2nd line and 1st column to display the frequency
-	position_lcd(1, 2);
-	display_text("F:");
-	display_number(f);
+	LCD_Set_Position(1, 2);
+	LCD_Display_Text("F:");
+	LCD_Display_Number(f);
 	// Set the position of the LCD to the 7th column to display the units
-	position_lcd(7, 2);
-	display_text("Hz");
+	LCD_Set_Position(7, 2);
+	LCD_Display_Text("Hz");
 }
 
-static void display_text(char display_string[])
+static void LCD_Display_Text(char display_string[])
 {
 	// Loop through the string and display each character
-	for (unsigned short i = 0; i < strlen(s); i++)
-		write_data(display_string[i]);
+	for (unsigned short i = 0; i < strlen(display_string); i++)
+	{
+		LCD_Write_Data(display_string[i]);
+	}
 }
 
-static void display_number(uint16_t number)
+static void LCD_Display_Number(uint16_t number)
 {
 	// Allocate 4 bytes for the number
 	char allocated_digits[4] = {'0', '0', '0', '0'};
 	// Convert the integer to a null terminiated string, with a radix of 10 (decimal number ranging from 0-9)
 	itoa(number, allocated_digits, 10);
-	display_text(allocated_digits);
+	LCD_Display_Text(allocated_digits);
 }
 
-static void position_lcd(unsigned short x, unsigned short y)
+static void LCD_Set_Position(unsigned short x, unsigned short y)
 {
 	// 8 possible bits to set, with a maximum value of 2^8 - 1 = 255, with 127 as the base value
 	unsigned short val = 127 + x;
@@ -209,23 +207,23 @@ static void position_lcd(unsigned short x, unsigned short y)
 	{
 		// 64 = 0x40 in hexadecimal, which corresponds to the 1st column of the 2nd line, adding 64 each time will shift the spot down
 		val += 64;
-		write_cmd(val);
+		LCD_Write_Command(val);
 	}
 }
 
-void LCD_init(void)
+void LCD_Init(void)
 {
 	H595_Write(0x02);
 	H595_Write(0x82);
 	H595_Write(0x02);
 
-	write_cmd(0x28);
-	write_cmd(0x0C);
-	write_cmd(0x06);
-	write_cmd(0x01);
+	LCD_Write_Command(0x28);
+	LCD_Write_Command(0x0C);
+	LCD_Write_Command(0x06);
+	LCD_Write_Command(0x01);
 }
 
-void write_cmd(char command)
+void LCD_Write_Command(char command)
 {
 	// Mask the lower 4 bits
 	char low = command & 0x0F;
@@ -240,7 +238,7 @@ void write_cmd(char command)
 	H595_Write(low);
 }
 
-void write_data(char data)
+void LCD_Write_Data(char data)
 {
 	// Mask the lower 4 bits
 	char low = data & 0x0F;
@@ -261,13 +259,19 @@ void H595_Write(uint8_t data)
 	GPIOB->BRR = GPIO_PIN_4;
 
 	// Wait until the transmit buffer empty flag is false (not empty), meaning the SPI is ready to transmit
-	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
+	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE))
+	{
+		// Do nothing
+	}
 
 	// Transmit the data, in this case, the data is 8 bits of the LCD corresponding to a character
 	HAL_SPI_Transmit(&SPI_Handle, &data, 1, HAL_MAX_DELAY);
 
 	// Wait until the transmit buffer empty flag is false (not empty), meaning the SPI is ready to transmit
-	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE));
+	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE))
+	{
+		// Do nothing
+	}
 
 	// Set bits in Port B Pin_4 to high
 	GPIOB->BSRR = GPIO_PIN_4;
