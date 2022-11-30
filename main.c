@@ -104,9 +104,13 @@ int main(int argc, char *argv[])
 	{
 		ADC1->CR |= ((uint32_t)0x00000004);
 
+
 		while (!(ADC1->ISR & ((uint32_t)0x00000004)));
 
+		
 		int ADC1ConvertedVal = (uint16_t)ADC1->DR;
+
+		
 
 		r = (ADC1ConvertedVal * 5000) / 0xFFF;
 
@@ -232,46 +236,31 @@ void myLCD_Init()
 	LCD_Write_Command(0x01);
 }
 
-// Source: Slide 20 of L17 - SPI and LCD interface
 void LCD_Write_Command(char command)
 {
-	// We need to break the command instruction into two 4-bit halves, L for the lower 4 bits and H for the higher 4 bits
 	// Mask the lower 4 bits
 	char L = command & 0x0F;
 	// Bit shift the input 4 bits to the right, then mask the lower 4 bits
 	char H = (command >> 4) & 0x0F;
 
-	// Since we first send data in the form of 00xxH, we can just send the H bits themselves
 	HC595_Transfer(H);
-	// Since we send data in the form of 10xxH, we can disregard the xxH portion and set them to all 0's, leading to 100000000 = 0x80
-	// We then bitwise OR the H bits with 0x80 to get the final instruction which includes H
 	HC595_Transfer(H | 0x80);
-	// We finally send the same instruction, 00xxH again to complete transmission
 	HC595_Transfer(H);
-	// L is sent in the same way as H, but with the series of instructions being 00xxL, 10xxL, 00xxL
 	HC595_Transfer(L);
 	HC595_Transfer(L | 0x80);
 	HC595_Transfer(L);
 }
 
-// Source: Slide 21 of L17 - SPI and LCD interface
 void LCD_Write_Data(char data)
 {
-	// We need to break the command instruction into two 4-bit halves, L for the lower 4 bits and H for the higher 4 bits
 	// Mask the lower 4 bits
 	char L = data & 0x0F;
 	// Bit shift the input 4 bits to the right, then mask the lower 4 bits
 	char H = (data >> 4) & 0x0F;
 
-	// Since we first send data in the form of 01xxH, we can disregard the xxH portion and set them to all 0's, leading to 010000000 = 0x40
-	// We then bitwise OR the H bits with 0x40 to get the final instruction which includes H
 	HC595_Transfer(H | 0x40);
-	// Since we send data in the form of 11xxH, we can disregard the xxH portion and set them to all 0's, leading to 110000000 = 0xC0
-	// We then bitwise OR the H bits with 0xC0 to get the final instruction which includes H
 	HC595_Transfer(H | 0xC0);
-	// We finally send the same instruction, 01xxH again to complete transmission
 	HC595_Transfer(H | 0x40);
-	// L is sent in the same way as H, but with the series of instructions being 01xxL, 11xxL, 01xxL
 	HC595_Transfer(L | 0x40);
 	HC595_Transfer(L | 0xC0);
 	HC595_Transfer(L | 0x40);
@@ -282,19 +271,19 @@ void HC595_Transfer(uint8_t data)
 	// Reset bits in Port B Pin_4 to low
 	GPIOB->BRR = GPIO_PIN_4;
 
-	// Wait until the Tx buffer empty flag is set to false, meaning that there is data in the buffer waiting to be transmitted via SPI
+	// Wait until the transmit buffer empty flag is false (not empty), meaning the SPI is ready to transmit
 	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE))
 	{
-		// Do nothing as long as the Tx buffer is empty
+		// Do nothing
 	}
 
 	// Transmit the data, in this case, the data is 8 bits of the LCD corresponding to a character
 	HAL_SPI_Transmit(&SPI_Handle, &data, 1, HAL_MAX_DELAY);
 
-	// Wait until the Tx buffer empty flag is set to false, meaning that there is data in the buffer waiting to be transmitted via SPI
+	// Wait until the transmit buffer empty flag is false (not empty), meaning the SPI is ready to transmit
 	while (!__HAL_SPI_GET_FLAG(&SPI_Handle, SPI_FLAG_TXE))
 	{
-		// Do nothing as long as the Tx buffer is empty
+		// Do nothing
 	}
 
 	// Set bits in Port B Pin_4 to high
@@ -303,43 +292,63 @@ void HC595_Transfer(uint8_t data)
 
 static void ADC_Config()
 {
+	// Enabled GPIO Clock
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
 
+	// Enable clock for ADC
 	RCC->APB2ENR |= RCC_APB2ENR_ADCEN;
 
-	GPIOC->MODER &= 0xFFFFFFF3;
-	GPIOC->MODER |= 0x0000000C;
+	// Configure GPIO as Output
+	GPIOA->MODER &= 0xFFFFFFF3;
+	GPIOA->MODER |= 0x0000000C;
 
-	GPIOC->PUPDR &= 0xFFFFFFF3;
-	GPIOC->PUPDR |= 0x00000000;
+	// Configure GPIO for input
+	GPIOA->PUPDR &= 0xFFFFFFF3;
+	GPIOA->PUPDR |= 0x00000000;
 
+	// Configure continuous read
 	ADC1->CFGR1 = ADC_CFGR1_CONT | ADC_CFGR1_OVRMOD;
 
+	// Set ADC to select channel 11
 	ADC1->CHSELR |= ADC_CHSELR_CHSEL11;
 
+	// Set sampling input to 239.5 ADC clock cycles
 	ADC1->SMPR &= ~((uint32_t)0x00000007);
 	ADC1->SMPR |= (uint32_t)0x00000007;
 
+	// Start the ADC
 	ADC1->CR |= (uint32_t)ADC_CR_ADEN;
 
+	// Wait for initialization of the ADC to complete
 	while (!(ADC1->ISR & ADC_CR_ADEN));
+
 }
 
 static void DAC_Config()
 {
+	// Enable TSCEN clock
 	RCC->AHBENR |= ((uint32_t)0x00020000);
 
+	// Enable Timer 14 for the DAC
 	RCC->APB1ENR |= ((uint32_t)0x20000000);
 
+	// Configure all GPIO pins as Input (Analog)
 	GPIOA->MODER &= 0xFFFFFCFF;
+
+	// Configure GPIO pin 5 as input
 	GPIOA->MODER |= 0x00000300;
 
+	// Configure all GPIO pins as reserved
 	GPIOA->PUPDR &= 0xFFFFFCFF;
+
+	// Set all GPIO pins to pull/push
 	GPIOA->PUPDR |= 0x00000000;
 
+	// Set DAC channel1 to enabled and use all 12 channel 1 bits
 	DAC->CR &= 0xFFFFFFFF9;
-	DAC->CR |= 0x00000000;
 
+	//Restart channel 1
+	DAC->CR |= 0x00000000;
 	DAC->CR |= 0x00000001;
 }
 
