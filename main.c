@@ -72,19 +72,19 @@ int f = 0;
 
 static void ADC_Config(void);
 static void DAC_Config(void);
-static void myTIM2_Init();
-static void myEXTI_Init();
+static void myTIM2_Init(void);
+static void myEXTI_Init(void);
 static void LCD_Display_Text(char display_string[]);
 static void LCD_Display_Number(uint16_t number);
-static void LCD_Set_Position(unsigned short x, unsigned short y);
+static void LCD_Set_Position(unsigned short row, unsigned short column);
 
-void LCD_Reset_Display();
+void LCD_Reset_Display(void);
 void SystemClock48MHz(void);
-void HC595_Config();
-void H595_Write(uint8_t data);
+void HC595_Config(void);
+void HC595_Transfer(uint8_t data);
 void LCD_Write_Command(char command);
 void LCD_Write_Data(char data);
-void LCD_Init();
+void myLCD_Init(void);
 
 int main(int argc, char *argv[])
 {
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 	myEXTI_Init();
 
 	HC595_Config();
-	LCD_Init();
+	myLCD_Init();
 
 	while (1)
 	{
@@ -190,70 +190,79 @@ static void LCD_Display_Text(char display_string[])
 
 static void LCD_Display_Number(uint16_t number)
 {
-	// Allocate 4 bytes for the number
+	// Allocate 4 digits to be used to represent the frequency and resistance
 	char allocated_digits[4] = {'0', '0', '0', '0'};
 	// Convert the integer to a null terminiated string, with a radix of 10 (decimal number ranging from 0-9)
 	itoa(number, allocated_digits, 10);
 	LCD_Display_Text(allocated_digits);
 }
 
-static void LCD_Set_Position(unsigned short x, unsigned short y)
+static void LCD_Set_Position(unsigned short row, unsigned short column)
 {
 	// 8 possible bits to set, with a maximum value of 2^8 - 1 = 255, with 127 as the base value
-	unsigned short val = 127 + x;
+	unsigned short shift = 127 + row;
 
-	// If y corresponds to the second row, add 64 to the value to shift it to the next line
-	if (y == 2)
+	// If column corresponds to the second row, add 64 to the value to shift it to the next line
+	if (column == 2)
 	{
 		// 64 = 0x40 in hexadecimal, which corresponds to the 1st column of the 2nd line, adding 64 each time will shift the spot down
-		val += 64;
-		LCD_Write_Command(val);
+		shift += 64;
+		LCD_Write_Command(shift);
 	}
 }
 
-void LCD_Init(void)
+// Source: Slide 22 of L17 - SPI and LCD interface 
+void myLCD_Init()
 {
-	H595_Write(0x02);
-	H595_Write(0x82);
-	H595_Write(0x02);
+	// Change the LCD to use a 4-bit interface
+	// Enable: write only the H portion of the instruction with RS = 0
+	HC595_Transfer(0x02);
+	// Send the instruction to change the LCD to use a 4-bit interface 
+	HC595_Transfer(0x82);
+	// Enable: write only the H portion of the instruction with RS = 0
+	HC595_Transfer(0x02);
 
+	// Set DL = 0, N = 1, F = 0 for the LCD
 	LCD_Write_Command(0x28);
+	// Set D = 1, C= 0, B = 0 for the LCD
 	LCD_Write_Command(0x0C);
+	// Set I/D = 1, S = 0 for the LCD
 	LCD_Write_Command(0x06);
+	// Clear the LCD display
 	LCD_Write_Command(0x01);
 }
 
 void LCD_Write_Command(char command)
 {
 	// Mask the lower 4 bits
-	char low = command & 0x0F;
+	char L = command & 0x0F;
 	// Bit shift the input 4 bits to the right, then mask the lower 4 bits
-	char high = (command >> 4) & 0x0F;
+	char H = (command >> 4) & 0x0F;
 
-	H595_Write(high);
-	H595_Write(high | 0x80);
-	H595_Write(high);
-	H595_Write(low);
-	H595_Write(low | 0x80);
-	H595_Write(low);
+	HC595_Transfer(H);
+	HC595_Transfer(H | 0x80);
+	HC595_Transfer(H);
+	HC595_Transfer(L);
+	HC595_Transfer(L | 0x80);
+	HC595_Transfer(L);
 }
 
 void LCD_Write_Data(char data)
 {
 	// Mask the lower 4 bits
-	char low = data & 0x0F;
+	char L = data & 0x0F;
 	// Bit shift the input 4 bits to the right, then mask the lower 4 bits
-	char high = (data >> 4) & 0x0F;
+	char H = (data >> 4) & 0x0F;
 
-	H595_Write(high | 0x40);
-	H595_Write(high | 0xC0);
-	H595_Write(high | 0x40);
-	H595_Write(low | 0x40);
-	H595_Write(low | 0xC0);
-	H595_Write(low | 0x40);
+	HC595_Transfer(H | 0x40);
+	HC595_Transfer(H | 0xC0);
+	HC595_Transfer(H | 0x40);
+	HC595_Transfer(L | 0x40);
+	HC595_Transfer(L | 0xC0);
+	HC595_Transfer(L | 0x40);
 }
 
-void H595_Write(uint8_t data)
+void HC595_Transfer(uint8_t data)
 {
 	// Reset bits in Port B Pin_4 to low
 	GPIOB->BRR = GPIO_PIN_4;
