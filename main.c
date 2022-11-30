@@ -222,20 +222,21 @@ static void LCD_Set_Position(unsigned short row, unsigned short column)
 void myLCD_Init()
 {
     // Change the LCD to use a 4-bit interface
-    // Enable: write only the H portion of the instruction with RS = 0
+    // Enable: write only the H portion of the instruction with RS = 0, so instruction is 0010 = 0x02
     HC595_Transfer(0x02);
-    // Send the instruction to change the LCD to use a 4-bit interface 
+    // Send the instruction to change the LCD to use a 4-bit interface
     HC595_Transfer(0x82);
-    // Enable: write only the H portion of the instruction with RS = 0
+    // Enable: write only the H portion of the instruction with RS = 0, so instruction is 0010 = 0x02
     HC595_Transfer(0x02);
 
-    // Set DL = 0, N = 1, F = 0 for the LCD
+	// We ignore the 00 that is added to the front of the instruction, as they don't contribute to the hexadecimal value
+    // Set DL = 0, N = 1, F = 0 for the LCD, so instruction is 0010 1000 = 0x28
     LCD_Write_Command(0x28);
-    // Set D = 1, C= 0, B = 0 for the LCD
+    // Set D = 1, C= 0, B = 0 for the LCD, so instruction is 0000 1100 = 0x0C
     LCD_Write_Command(0x0C);
-    // Set I/D = 1, S = 0 for the LCD
+    // Set I/D = 1, S = 0 for the LCD, so instruction is 0000 0110 = 0x06
     LCD_Write_Command(0x06);
-    // Clear the LCD display
+    // Clear the LCD display, so instruction is 0000 0001 = 0x01
     LCD_Write_Command(0x01);
 }
 
