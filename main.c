@@ -181,10 +181,12 @@ static void LCD_Display_Number(uint16_t number)
 
 static void LCD_Set_Position(unsigned short row, unsigned short column)
 {
-    // 8 possible bits to set, with a maximum value of 2^8 - 1 = 255, with 127 as the base value
+    // 8 possible bits to set, with a maximum value of 2^8 - 1 = 255 bits, with 2^7 - 1 = 127 bits as the base value
+    // Since we have 255 bits for both rows, each row can have a maximum value of 128 bits.
+    // With 8 slots for each row, each slot can have a maximum value of 16 bits, or 2 bytes.
     unsigned short shift = 127 + row;
 
-    // If column corresponds to the second row, add 64 to the value to shift it to the next line
+    // If column corresponds to the 2nd row, add 64 to the value to shift it to the next line
     if (column == 2)
     {
         // 64 = 0x40 in hexadecimal, which corresponds to the 1st column of the 2nd line, adding 64 each time will shift the spot down
