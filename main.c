@@ -1,30 +1,7 @@
 /*
- * This file is part of the µOS++ distribution.
- *   (https://github.com/micro-os-plus)
- * Copyright (c) 2014 Liviu Ionescu.
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or
- * sell copies of the Software, and to permit persons to whom
- * the Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+ECE 355 Final Project 
 
+*/
 // ----------------------------------------------------------------------------
 
 #include <stdio.h>
@@ -67,8 +44,9 @@
 SPI_HandleTypeDef SPI_Handle;
 
 int rising_edge = 0;
-int r = 0;
 int f = 0;
+int r = 0;
+
 
 static void ADC_Config(void);
 static void DAC_Config(void);
@@ -452,20 +430,10 @@ void EXTI0_1_IRQHandler()
     double frequency = 0;
 
     /* Check if EXTI1 interrupt pending flag is indeed set */
-    if ((EXTI->PR & EXTI_PR_PR1) != 0)
+    if ((EXTI->PR & EXTI_PR_PR1))
     {
         // First edge
-        if (rising_edge == 0)
-        {
-            rising_edge = 1;
-
-            // Clear count register
-            TIM2->CNT = 0x00000000;
-            // Start timer
-            TIM2->CR1 |= TIM_CR1_CEN;
-        }
-        // Second edge
-        else
+        if (rising_edge == 1)
         {
             rising_edge = 0;
 
@@ -484,9 +452,23 @@ void EXTI0_1_IRQHandler()
             f = frequency;
 
             EXTI->IMR |= EXTI_IMR_MR1;
+            
+            // Clear EXTI1 interrupt pending flag
+            EXTI->PR |= EXTI_PR_PR1;
         }
-        // Clear EXTI1 interrupt pending flag
-        EXTI->PR |= EXTI_PR_PR1;
+        // Second edge
+        else
+        {
+            rising_edge = 1;
+
+            // Clear count register
+            TIM2->CNT = 0x00000000;
+            // Start timer
+            TIM2->CR1 |= TIM_CR1_CEN;
+
+            // Clear EXTI1 interrupt pending flag
+            EXTI->PR |= EXTI_PR_PR1;
+        }
     }
 }
 
