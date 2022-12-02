@@ -1,5 +1,5 @@
 /*
-ECE 355 Final Project 
+ECE 355 Final Project
 
 */
 // ----------------------------------------------------------------------------
@@ -147,6 +147,8 @@ void HC595_Config()
 
 void LCD_Reset_Display()
 {
+	trace_printf("Resistance: %d\n", r);
+
     // Set the position of the LCD to the 2nd line and 1st column to display the resistance
     LCD_Set_Position(1, 1);
     LCD_Display_Text("R:");
@@ -196,7 +198,7 @@ static void LCD_Set_Position(unsigned short row, unsigned short column)
     }
 }
 
-// Source: Slide 22 of L17 - SPI and LCD interface 
+// Source: Slide 22 of L17 - SPI and LCD interface
 void myLCD_Init()
 {
     // Change the LCD to use a 4-bit interface
@@ -308,7 +310,7 @@ static void ADC_Config()
 
     // Set ADC to select chanel 11
     ADC1->CHSELR |= ADC_CHSELR_CHSEL11;
-    
+
     // Set sampling input to 239.5 ADC clock cycles
     ADC1->SMPR &= ~((uint32_t)0x00000007);
     ADC1->SMPR |= (uint32_t)0x00000007;
@@ -452,7 +454,7 @@ void EXTI0_1_IRQHandler()
             f = frequency;
 
             EXTI->IMR |= EXTI_IMR_MR1;
-            
+
             // Clear EXTI1 interrupt pending flag
             EXTI->PR |= EXTI_PR_PR1;
         }
