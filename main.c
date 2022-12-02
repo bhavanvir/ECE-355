@@ -273,7 +273,7 @@ void HC595_Transfer(uint8_t data)
         // Do nothing as long as the Tx buffer is empty
     }
 
-    // Transmit the data, in this case, the data is 8 bits of the LCD corresponding to a character
+    // Transmit the data, in this case, the data is 4 bits of the LCD corresponding to the H or L portion of the LCD instruction
     HAL_SPI_Transmit(&SPI_Handle, &data, 1, HAL_MAX_DELAY);
 
     // Wait until the Tx buffer empty flag is set to false, meaning that there is data in the buffer waiting to be transmitted via SPI
