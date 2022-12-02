@@ -1,7 +1,3 @@
-/*
-ECE 355 Final Project
-
-*/
 // ----------------------------------------------------------------------------
 
 #include <stdio.h>
@@ -46,7 +42,6 @@ SPI_HandleTypeDef SPI_Handle;
 int rising_edge = 0;
 int f = 0;
 int r = 0;
-
 
 static void ADC_Config(void);
 static void DAC_Config(void);
