@@ -40,8 +40,8 @@
 SPI_HandleTypeDef SPI_Handle;
 
 int rising_edge = 0;
-int f = 0;
-int r = 0;
+int ADC_frequency = 0;
+int ADC_resistance = 0;
 
 static void ADC_Config(void);
 static void DAC_Config(void);
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
         // Get our ADC value
         int ADC1ConvertedVal = (uint16_t)ADC1->DR;
         // Convert our ADC value to achieve a resistance value
-        r = (ADC1ConvertedVal * 5000) / 0xFFF;
+        ADC_resistance = (ADC1ConvertedVal * 5000) / 0xFFF;
 
         // Normalize our value through our DAC
         DAC->DHR12R1 = ADC1ConvertedVal;
@@ -147,12 +147,12 @@ void SPI_Config()
 
 void LCD_Reset_Display()
 {
-	trace_printf("Resistance: %d\n", r);
+	trace_printf("Resistance: %d\n", ADC_resistance);
 
     // Set the position of the LCD to the 2nd line and 1st column to display the resistance
     LCD_Set_Position(1, 1);
     LCD_Display_Text("R:");
-    LCD_Display_Number(r);
+    LCD_Display_Number(ADC_resistance);
     // Set the position of the LCD to the 7th column to display the units
     LCD_Set_Position(7, 1);
     LCD_Display_Text("Oh");
@@ -160,7 +160,7 @@ void LCD_Reset_Display()
     // Set the position of the LCD to the 2nd line and 1st column to display the frequency
     LCD_Set_Position(1, 2);
     LCD_Display_Text("F:");
-    LCD_Display_Number(f);
+    LCD_Display_Number(ADC_frequency);
     // Set the position of the LCD to the 7th column to display the units
     LCD_Set_Position(7, 2);
     LCD_Display_Text("Hz");
@@ -452,8 +452,8 @@ void EXTI0_1_IRQHandler()
             period = (double)count / (double)SystemCoreClock;
             frequency = 1.0 / period;
 
-            // Set the global variable f to the calculated frequency
-            f = frequency;
+            // Set the global variable ADC_frequency to the calculated frequency
+            ADC_frequency = frequency;
 
             EXTI->IMR |= EXTI_IMR_MR1;
 
