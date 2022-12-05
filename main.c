@@ -54,6 +54,7 @@ static void LCD_Set_Position(unsigned short row, unsigned short column);
 void LCD_Reset_Display(void);
 void SystemClock48MHz(void);
 void HC595_Config(void);
+void SPI_Config(void);
 void HC595_Transfer(uint8_t data);
 void LCD_Write_Command(char command);
 void LCD_Write_Data(char data);
@@ -71,6 +72,7 @@ int main(int argc, char *argv[])
     myEXTI_Init();
 
     HC595_Config();
+    SPI_Config();
     myLCD_Init();
 
     while (1)
@@ -100,11 +102,11 @@ void HC595_Config()
 {
     GPIO_InitTypeDef GPIO_InitStruct;
 
-    // Enable clock for GPIOB and SPI1
+    // Enable the GPIOB and SPI1 clocks. 
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
-    // Configure PB3 and PB5 alternate function for SPI
+    // Configure PB3 and PB5, where PB5 is the alternate function for the SPI
     GPIO_InitStruct.Pin = GPIO_PIN_3 | GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
@@ -112,13 +114,16 @@ void HC595_Config()
     GPIO_InitStruct.Alternate = GPIO_AF0_SPI1;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    // Configure PB4 in output mode to be used as storage clock input in 74HC595
+    // Configure PB4 in output mode to be used as the SRCLK in 74HC595
     GPIO_InitStruct.Pin = GPIO_PIN_4;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
 
+void SPI_Config()
+{
     // Point to SPI1 of the stm32f0
     SPI_Handle.Instance = SPI1;
 
