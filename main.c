@@ -27,76 +27,11 @@
 #pragma GCC diagnostic ignored "-Wmissing-declarations"
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
-/* Clock prescaler for TIM2 timer: no prescaling */
-#define myTIM2_PRESCALER ((uint16_t)0x0000)
-/* Maximum possible setting for overflow */
-#define myTIM2_PERIOD ((uint32_t)0xFFFFFFFF)
-
-/* Clock prescaler for TIM3 timer: no prescaling */
-#define myTIM3_PRESCALER ((uint16_t)0x0000)
-/* Maximum possible setting for overflow */
-#define myTIM3_PERIOD ((uint32_t)0xFFFFFFFF)
-
 SPI_HandleTypeDef SPI_Handle;
 
 int rising_edge = 0;
 int ADC_frequency = 0;
 int ADC_resistance = 0;
-
-static void ADC_Config(void);
-static void DAC_Config(void);
-static void myTIM2_Init(void);
-static void myEXTI_Init(void);
-static void LCD_Display_Text(char display_string[]);
-static void LCD_Display_Number(uint16_t number);
-static void LCD_Set_Position(unsigned short row, unsigned short column);
-
-void LCD_Reset_Display(void);
-void SystemClock48MHz(void);
-void HC595_Config(void);
-void SPI_Config(void);
-void HC595_Transfer(uint8_t data);
-void LCD_Write_Command(char command);
-void LCD_Write_Data(char data);
-void myLCD_Init(void);
-
-int main(int argc, char *argv[])
-{
-    // Configure the system clock to 48 MHz
-    SystemClock48MHz();
-    trace_printf("System clock: %u Hz\n", SystemCoreClock);
-
-    ADC_Config();
-    DAC_Config();
-    myTIM2_Init();
-    myEXTI_Init();
-
-    HC595_Config();
-    SPI_Config();
-    myLCD_Init();
-
-    while (1)
-    {
-        // Start the ADC
-        ADC1->CR |= ((uint32_t)0x00000004);
-
-        // Wait for the ADC to finish initializing
-        while (!(ADC1->ISR & ((uint32_t)0x00000004))){
-            // Do nothing until the ADC is ready
-        }
-
-        // Get our ADC value
-        int ADC1ConvertedVal = (uint16_t)ADC1->DR;
-        // Convert our ADC value to achieve a resistance value
-        ADC_resistance = (ADC1ConvertedVal * 5000) / 0xFFF;
-
-        // Normalize our value through our DAC
-        DAC->DHR12R1 = ADC1ConvertedVal;
-
-        // Display our value on the LCD
-        LCD_Reset_Display();
-    }
-}
 
 void HC595_Config()
 {
@@ -146,7 +81,7 @@ void SPI_Config()
 }
 
 void LCD_Reset_Display()
-{
+{    
 	trace_printf("Resistance: %d\n", ADC_resistance);
 
     // Set the position of the LCD to the 2nd line and 1st column to display the resistance
@@ -363,10 +298,10 @@ void myTIM2_Init()
     // Relevant register: TIM2->CR1
     TIM2->CR1 = ((uint16_t)0x008C);
 
-    /* Set clock prescaler value */
-    TIM2->PSC = myTIM2_PRESCALER;
+    /* Set clock prescaler value for TIM2*/
+    TIM2->PSC = ((uint16_t)0x0000);
     /* Set auto-reloaded delay */
-    TIM2->ARR = myTIM2_PERIOD;
+    TIM2->ARR = ((uint32_t)0xFFFFFFFF);
 
     /* Update timer registers */
     // Relevant register: TIM2->EGR
@@ -496,6 +431,44 @@ void SystemClock48MHz(void)
 
     // Update the system with the new clock frequency
     SystemCoreClockUpdate();
+}
+
+int main(int argc, char *argv[])
+{
+    // Configure the system clock to 48 MHz
+    SystemClock48MHz();
+    trace_printf("System clock: %u Hz\n", SystemCoreClock);
+
+    ADC_Config();
+    DAC_Config();
+    myTIM2_Init();
+    myEXTI_Init();
+
+    HC595_Config();
+    SPI_Config();
+    myLCD_Init();
+
+    while (1)
+    {
+        // Start the ADC
+        ADC1->CR |= ((uint32_t)0x00000004);
+
+        // Wait for the ADC to finish initializing
+        while (!(ADC1->ISR & ((uint32_t)0x00000004))){
+            // Do nothing until the ADC is ready
+        }
+
+        // Get our ADC value
+        int ADC1ConvertedVal = (uint16_t)ADC1->DR;
+        // Convert our ADC value to achieve a resistance value
+        ADC_resistance = (ADC1ConvertedVal * 5000) / 0xFFF;
+
+        // Normalize our value through our DAC
+        DAC->DHR12R1 = ADC1ConvertedVal;
+
+        // Display our value on the LCD
+        LCD_Reset_Display();
+    }
 }
 
 #pragma GCC diagnostic pop
